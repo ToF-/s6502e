@@ -33,7 +33,6 @@ void exit_s6502s() {
     print_registers();
     printf("clock ticks: %u\n", clockticks6502);
     printf("instructions: %u\n", instructions);
-    getchar();
     exit(0);
 }
 
