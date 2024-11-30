@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <getopt.h>
 #include <stdint.h>
 #include "fake6502.h"
 
@@ -44,9 +46,32 @@ void print_registers() {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc > 1 && argv[1][0] == 'S') {
-        step = 1;
+    int opt;
+    struct option long_options[] = {
+        { "help", no_argument, NULL, 'h' },
+        { "step", no_argument, NULL, 's' },
+        { "file", required_argument, NULL, 'f' },
+        { NULL, 0 , NULL, 0}
+    };
+
+    while ((opt = getopt_long(argc, argv, "hsf:", long_options, NULL)) != -1) {
+        switch (opt) {
+            case 'h':
+                printf("Help *TO DO*\n");
+                return 1;
+            case 'f':
+                printf("load file %s\n", optarg);
+                getchar();
+                break;
+            case 's':
+                step = 1;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-h] [-f filename] [-s]\n", argv[0]);
+                return 1;
+        }
     }
+
     hookexternal(*print_registers);
     init_ram();
     clear_screen();
