@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <sys/ioctl.h>
+#include <time.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -49,7 +51,7 @@ void print_screen() {
     for(int row = 0; row < 32; row++) {
         for (int col = 0; col < 32; col++) {
             cursorXY(row + 1, col + 1);
-            int value = ram[0x0200 + row * 32 + col];
+            int value = ram[0x0200 + row * 32 + col] & 0x0F;
             int color = value < 8 ? value + 30 : value + 82;
             printf("\033[%dm█", color);
         }
@@ -63,9 +65,17 @@ void write6502(uint16_t address, uint8_t value) {
     }
 }
 
+uint8_t random_value() {
+    uint8_t value = rand() & 0xFF;
+    return value;
+}
 uint8_t read6502(uint16_t address) {
-    int value = ram[address];
-    return ram[address];
+    switch(address) {
+        case 0x00FE:
+            return random_value();
+        default:
+            return ram[address];
+    }
 }
 
 void clear_screen() {
@@ -117,6 +127,7 @@ void hook() {
     }
 }
 int main(int argc, char *argv[]) {
+    srand (time(NULL));
     int opt;
     struct option long_options[] = {
         { "help", no_argument, NULL, 'h' },
@@ -154,8 +165,7 @@ int main(int argc, char *argv[]) {
     clear_screen();
     init_exit_trap();
     reset6502();
-    exec6502(200);
+    exec6502(20000);
     reset_screen();
     return 0;
 }
-
