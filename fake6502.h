@@ -285,12 +285,6 @@ void reset6502() {
 	    sp = 0xFD;
 	    status |= FLAG_CONSTANT;
     */
-    read6502(0x00ff);
-    read6502(0x00ff);
-    read6502(0x00ff);
-    read6502(0x0100);
-    read6502(0x01ff);
-    read6502(0x01fe);
     pc = mem_6502_read16(0xfffc);
     sp = 0xfd;
     status |= FLAG_CONSTANT | FLAG_INTERRUPT;

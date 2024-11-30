@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <stdint.h>
@@ -6,62 +7,110 @@
 
 #define cursorXY(x,y) printf("\033[%d;%dH",(x),(y))
 
-uint8_t ram[0xFFFF];
+#define RAMSIZE 0x10000
 
-void init_ram() {
-    ram[0xFFFC] = 0x00;
-    ram[0xFFFD] = 0x02;
+uint8_t ram[RAMSIZE];
 
-    ram[0x0200] = 0x18;
-    ram[0x0201] = 0xa9;
-    ram[0x0202] = 0x7a;
-    ram[0x0203] = 0x69;
-    ram[0x0204] = 0x17;
-    ram[0x0205] = 0x60;
-}
-
-void write6502(uint16_t address, uint8_t value) {
-    ram[address] = value;
-}
-
-uint8_t read6502(uint16_t address) {
-    return ram[address];
-}
-
+int origin = 0x0600;
+int loaded = 0;
 int step = 0;
 
-void clear_screen() {
-    printf("\033[2J");
-}
+
+unsigned char buffer[RAMSIZE];
+
 void print_registers() {
-    cursorXY(1,1);
     printf("PC:   AC  XR  YR  SR  SP   NV-BDIZC\n");
     printf("%04X  %02X  %02X  %02X  %02X  %02X   ", pc, a, x, y, status, sp);
     for(int mask = 128; mask > 0; mask >>= 1) {
         printf("%c", ((status & mask) == mask) ? '1' : '0');
     }
     printf("\n\n");
-    if (step)
-        getchar();
 }
 
+void exit_s6502s() {
+    print_registers();
+    printf("clock ticks: %u\n", clockticks6502);
+    printf("instructions: %u\n", instructions);
+    getchar();
+    exit(0);
+}
+
+
+void write6502(uint16_t address, uint8_t value) {
+    ram[address] = value;
+}
+
+uint8_t read6502(uint16_t address) {
+    int value = ram[address];
+    printf("(%04X) %04X %02X\n", pc, address, value);
+    if (status | FLAG_INTERRUPT) {
+        print_registers();
+        getchar();
+    }
+    return ram[address];
+}
+
+void clear_screen() {
+    printf("\033[2J");
+}
+int load_binary(char *filename) {
+    FILE *file;
+    if ((file = fopen(filename, "rb"))) {
+        return fread(buffer, 1, sizeof(buffer), file);
+    } else {
+        fprintf(stderr, "can't read file %s\n", filename);
+        return 0;
+    }
+}
+
+void dump(int start, int count) {
+    for(int i=0; i < count; i++) {
+        if(i % 8 == 0) {
+            printf("\n%04x ", start + i);
+        }
+        printf(" %02X", ram[start + i]);
+    }
+    printf("\n");
+}
+
+void relocate() {
+    printf("relocating %d bytes at %04X\n", loaded, origin);
+    for(int i = 0; i<0xFFFF && i<loaded; i++) {
+        ram[origin+i] = buffer[i];
+    }
+    ram[0xFFFC] = origin & 0xFF;
+    ram[0xFFFD] = origin >> 8;
+    if (step) {
+        dump(origin, loaded);
+    }
+}
+
+void init_exit_trap() {
+    ram[0xFFFE] = 0xFF;
+    ram[0xFFFF] = 0xFF;
+}
 int main(int argc, char *argv[]) {
     int opt;
     struct option long_options[] = {
         { "help", no_argument, NULL, 'h' },
+        { "origin", required_argument, NULL, 'o' },
         { "step", no_argument, NULL, 's' },
         { "file", required_argument, NULL, 'f' },
         { NULL, 0 , NULL, 0}
     };
 
-    while ((opt = getopt_long(argc, argv, "hsf:", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "ho:sf:", long_options, NULL)) != -1) {
         switch (opt) {
             case 'h':
                 printf("Help *TO DO*\n");
                 return 1;
             case 'f':
-                printf("load file %s\n", optarg);
-                getchar();
+                if ((loaded = load_binary(optarg))==0) {
+                    return 1;
+                }
+                break;
+            case 'o':
+                origin = (int)strtol(optarg, NULL, 16);
                 break;
             case 's':
                 step = 1;
@@ -71,14 +120,16 @@ int main(int argc, char *argv[]) {
                 return 1;
         }
     }
-
-    hookexternal(*print_registers);
-    init_ram();
+    if (loaded) {
+        relocate();
+    }
+    if (step) {
+        hookexternal(*print_registers);
+    }
     clear_screen();
-    printf("reset…\n");
     reset6502();
-    exec6502(5);
-    printf("clock ticks: %u\n", clockticks6502);
+    init_exit_trap();
+    exec6502(100);
     return 0;
 }
 
