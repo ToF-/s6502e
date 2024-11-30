@@ -18,6 +18,8 @@ int step = 0;
 
 unsigned char buffer[RAMSIZE];
 
+void exit_s6502s();
+
 void print_registers() {
     printf("PC:   AC  XR  YR  SR  SP   NV-BDIZC\n");
     printf("%04X  %02X  %02X  %02X  %02X  %02X   ", pc, a, x, y, status, sp);
@@ -42,11 +44,6 @@ void write6502(uint16_t address, uint8_t value) {
 
 uint8_t read6502(uint16_t address) {
     int value = ram[address];
-    printf("(%04X) %04X %02X\n", pc, address, value);
-    if (status | FLAG_INTERRUPT) {
-        print_registers();
-        getchar();
-    }
     return ram[address];
 }
 
@@ -86,8 +83,17 @@ void relocate() {
 }
 
 void init_exit_trap() {
-    ram[0xFFFE] = 0xFF;
-    ram[0xFFFF] = 0xFF;
+    ram[0xFFFE] = 0x00;
+    ram[0xFFFF] = 0x00;
+}
+
+void hook() {
+    if (step) {
+        print_registers();
+    }
+    if (pc == 0x0000) {
+        exit_s6502s();
+    }
 }
 int main(int argc, char *argv[]) {
     int opt;
@@ -123,13 +129,11 @@ int main(int argc, char *argv[]) {
     if (loaded) {
         relocate();
     }
-    if (step) {
-        hookexternal(*print_registers);
-    }
+    hookexternal(*hook);
     clear_screen();
-    reset6502();
     init_exit_trap();
-    exec6502(100);
+    reset6502();
+    exec6502(200);
     return 0;
 }
 

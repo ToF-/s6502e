@@ -277,17 +277,12 @@ static ushort mem_6502_read16(ushort addr) {
 }
 
 void reset6502() {
-	/*
-	    pc = (ushort)read6502(0xFFFC) | ((ushort)read6502(0xFFFD) << 8);
-	    a = 0;
-	    x = 0;
-	    y = 0;
-	    sp = 0xFD;
-	    status |= FLAG_CONSTANT;
-    */
-    pc = mem_6502_read16(0xfffc);
-    sp = 0xfd;
-    status |= FLAG_CONSTANT | FLAG_INTERRUPT;
+    pc = (ushort)read6502(0xFFFC) | ((ushort)read6502(0xFFFD) << 8);
+    a = 0;
+    x = 0;
+    y = 0;
+    sp = 0xFD;
+    status |= FLAG_CONSTANT;
 }
 
 
