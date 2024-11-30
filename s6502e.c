@@ -8,6 +8,7 @@
 #define cursorXY(x,y) printf("\033[%d;%dH",(x),(y))
 
 #define RAMSIZE 0x10000
+#define SCREENSIZE 0x0400
 
 uint8_t ram[RAMSIZE];
 
@@ -15,12 +16,19 @@ int origin = 0x0600;
 int loaded = 0;
 int step = 0;
 
+void dump(int start, int count);
 
 unsigned char buffer[RAMSIZE];
+unsigned char screen[SCREENSIZE];
 
 void exit_s6502s();
 
+void reset_screen() {
+    printf("\033[0m\n");
+}
+
 void print_registers() {
+    reset_screen();
     printf("PC:   AC  XR  YR  SR  SP   NV-BDIZC\n");
     printf("%04X  %02X  %02X  %02X  %02X  %02X   ", pc, a, x, y, status, sp);
     for(int mask = 128; mask > 0; mask >>= 1) {
@@ -30,15 +38,29 @@ void print_registers() {
 }
 
 void exit_s6502s() {
+    printf("\033[0m\n");
     print_registers();
     printf("clock ticks: %u\n", clockticks6502);
     printf("instructions: %u\n", instructions);
     exit(0);
 }
 
+void print_screen() {
+    for(int row = 0; row < 32; row++) {
+        for (int col = 0; col < 32; col++) {
+            cursorXY(row + 1, col + 1);
+            int value = ram[0x0200 + row * 32 + col];
+            int color = value < 8 ? value + 30 : value + 82;
+            printf("\033[%dm█", color);
+        }
+    }
+}
 
 void write6502(uint16_t address, uint8_t value) {
     ram[address] = value;
+    if (address >= 0x0200 && address < 0x0600) {
+        print_screen();
+    }
 }
 
 uint8_t read6502(uint16_t address) {
@@ -133,6 +155,7 @@ int main(int argc, char *argv[]) {
     init_exit_trap();
     reset6502();
     exec6502(200);
+    reset_screen();
     return 0;
 }
 
