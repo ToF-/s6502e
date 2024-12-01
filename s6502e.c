@@ -1,10 +1,11 @@
+#include <getopt.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <time.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <getopt.h>
-#include <stdint.h>
 #include "fake6502.h"
 
 #define cursorXY(x,y) printf("\033[%d;%dH",(x),(y))
@@ -165,7 +166,7 @@ int main(int argc, char *argv[]) {
     clear_screen();
     init_exit_trap();
     reset6502();
-    exec6502(20000);
+    exec6502(INT_MAX);
     reset_screen();
     return 0;
 }
