@@ -47,21 +47,21 @@ void exit_s6502s() {
     exit(0);
 }
 
-void print_screen() {
-    for(int row = 0; row < 32; row++) {
-        for (int col = 0; col < 32; col++) {
-            cursorXY(row + 1, col + 1);
-            int value = ram[0x0200 + row * 32 + col] & 0x0F;
-            int color = value < 8 ? value + 30 : value + 82;
-            printf("\033[%dm█", color);
-        }
-    }
+void print_pixel(uint16_t address, uint8_t value) {
+    int offset = address - 0x0200;
+    int row = offset / 32;
+    int col = offset % 32;
+    int val = value & 0x0F;
+    cursorXY(row + 1, col + 1);
+    int color = val < 8 ? val + 30 : val + 82;
+    printf("\033[%dm█", color);
+    cursorXY(1,40);
 }
 
 void write6502(uint16_t address, uint8_t value) {
     ram[address] = value;
     if (address >= 0x0200 && address < 0x0600) {
-        print_screen();
+        print_pixel(address, value);
     }
 }
 
